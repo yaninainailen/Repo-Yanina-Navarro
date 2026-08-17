@@ -1,5 +1,5 @@
 // ---------- Config ----------
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-3.6-flash";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const STORAGE_KEY = "barescopados_gemini_key";
 
