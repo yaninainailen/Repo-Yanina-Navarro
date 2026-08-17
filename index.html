@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Copies — @barescopados</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>🍸 Generador de Copies</h1>
+  <p class="subtitle">@barescopados — armá el copy de tu próximo posteo</p>
+</header>
+
+<main>
+
+  <section class="card" id="api-key-card">
+    <h2>1. Tu clave de Gemini</h2>
+    <p class="hint">
+      Se guarda solo en este navegador (nunca se sube al repositorio). Si no tenés una,
+      conseguila gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a>.
+    </p>
+    <label for="apiKey">API Key</label>
+    <input type="password" id="apiKey" placeholder="Pegá tu clave acá" autocomplete="off">
+    <label class="checkbox-label">
+      <input type="checkbox" id="rememberKey" checked>
+      Recordar en este navegador
+    </label>
+  </section>
+
+  <form id="copyForm" class="card">
+    <h2>2. Datos del lugar</h2>
+
+    <label for="nombreBar">Nombre del bar</label>
+    <input type="text" id="nombreBar" required placeholder="Ej: Casa Gin">
+
+    <label for="instagramLugar">Instagram del lugar</label>
+    <input type="text" id="instagramLugar" placeholder="Ej: @casaginarg">
+
+    <label for="direccion">Dirección</label>
+    <input type="text" id="direccion" placeholder="Ej: Honduras 4669, Palermo">
+
+    <label for="speech">Speech del video (lo que grabaste en la voz en off)</label>
+    <textarea id="speech" rows="6" required placeholder="Pegá acá el guion o transcripción de lo que contaste en el video: qué probaron, qué te pareció, alguna anécdota del lugar..."></textarea>
+
+    <h2>3. Menú y precios</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-mode="link">Link</button>
+      <button type="button" class="tab-btn" data-mode="foto">Foto</button>
+      <button type="button" class="tab-btn" data-mode="texto">Texto</button>
+    </div>
+
+    <div class="tab-panel" data-panel="link">
+      <label for="menuLink">Link al menú</label>
+      <input type="url" id="menuLink" placeholder="https://...">
+      <p class="hint">El agente va a intentar leer el link directamente. Algunos sitios lo bloquean — si el copy sale sin precios, probá con Foto o Texto.</p>
+    </div>
+
+    <div class="tab-panel hidden" data-panel="foto">
+      <label for="menuFoto">Foto del menú</label>
+      <input type="file" id="menuFoto" accept="image/*">
+    </div>
+
+    <div class="tab-panel hidden" data-panel="texto">
+      <label for="menuTexto">Platos y precios (pegalos tal cual)</label>
+      <textarea id="menuTexto" rows="5" placeholder="Ej: Provoleta $18.500&#10;Trucha con vegetales $31.000&#10;Clover Club $14.000"></textarea>
+    </div>
+
+    <h2>4. Ideal para</h2>
+    <div class="checkbox-group">
+      <label class="checkbox-label"><input type="checkbox" name="idealPara" value="citas"> Citas</label>
+      <label class="checkbox-label"><input type="checkbox" name="idealPara" value="amigos"> Amigos</label>
+      <label class="checkbox-label"><input type="checkbox" name="idealPara" value="cumpleaños"> Cumpleaños</label>
+      <label class="checkbox-label"><input type="checkbox" name="idealPara" value="after office"> After office</label>
+    </div>
+
+    <button type="submit" id="generarBtn" class="btn-primary">✨ Generar copy</button>
+  </form>
+
+  <section class="card hidden" id="resultCard">
+    <h2>Copy generado</h2>
+    <div id="loading" class="hidden">Escribiendo copy...</div>
+    <textarea id="resultado" rows="18" readonly></textarea>
+    <button type="button" id="copiarBtn" class="btn-secondary">📋 Copiar</button>
+    <p id="copiadoMsg" class="hint hidden">¡Copiado!</p>
+  </section>
+
+  <section class="card hidden" id="errorCard">
+    <h2>⚠️ Algo falló</h2>
+    <p id="errorMsg"></p>
+  </section>
+
+</main>
+
+<footer>
+  <p>Hecho para @barescopados — proyecto de la materia Creación de Agentes de IA (MBA UCEMA)</p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

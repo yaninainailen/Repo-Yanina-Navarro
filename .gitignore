@@ -1,0 +1,5 @@
+# Nunca subir claves o secretos
+*API*KEY*
+*.env
+.env.*
+*secret*
