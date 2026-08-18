@@ -1,12 +1,12 @@
-# Generador de copies para @barescopados
+# Generador de copies para mi cuenta de instagram @barescopados
 
 ## Qué construí
 Una página web (HTML + CSS + JS, sin backend) que genera el copy de Instagram para los posteos de
 @barescopados. Reemplaza la tarea manual de escribir el texto de cada publicación: cargo el nombre
 del lugar, el speech que grabé en el video, el menú y algunos datos, y un agente de IA (Gemini)
 redacta el copy siguiendo siempre la misma estructura y estilo que ya usamos en la cuenta, incluso
-buscando en la web datos prácticos (horarios, DJ) que no le pasé a mano. Es de uso compartido: la
-usamos tanto Lucho como yo, cada uno con su propia clave gratuita de Gemini, desde el celular.
+buscando en la web datos adicionales que no le pasé a mano. Es de uso compartido: la
+usamos tanto mi pareja como yo, cada uno con su propia clave gratuita de Gemini, desde el celular o la computadora.
 
 ## Cómo se lo pedí
 Instrucciones principales, en el orden en que se las di al agente (Claude Code):
@@ -19,7 +19,7 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
 2. Decisión de arquitectura: pedí que el copy lo genere una IA real (no una plantilla mecánica sin
    IA), para que sea un agente de IA de verdad y no solo un armador de texto.
 3. Decisión de costos: descarté usar la API de Claude porque implicaba pagar aparte de mi
-   suscripción, y elegí la API de Gemini por su nivel gratuito sin tarjeta.
+   suscripción, y elegí la API de Gemini por su nivel gratuito.
 4. Le pasé al agente 3 copies reales ya publicados en la cuenta, para que aprendiera el estilo y la
    estructura exacta (título con emoji + nombre en mayúscula/negrita, bloque de comida, bloque de
    bebida, "✍🏼 DATOS", "☝🏼 Ideal para", dirección, pregunta de cierre, hashtags).
@@ -56,14 +56,14 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
 
 ## Qué falta o qué falló
 - **La sección DATOS repetía precios y contenido**: en la primera prueba real, "DATOS" volvía a poner
-  un precio de los tragos y repetía la idea del DJ que ya estaba en la apertura. Ajusté el prompt con
+  un precio de los tragos. Ajusté el prompt con
   reglas explícitas ("prohibido el símbolo $ en DATOS", "prohibido repetir ideas ya dichas") y un
   criterio claro de cuándo omitir la sección en vez de rellenarla. Quedó mejor pero no llegué a hacer
   una tercera prueba end-to-end por el problema de cuota (ver siguiente punto) — para la próxima
   entrega habría que confirmar que la corrección sostiene en varios casos distintos, no solo uno.
 - **Choqué con el límite de cuota gratuita de Gemini, y la causa no era la que pensé**: al principio
-  asumí que era la cuota de "búsqueda web" (google_search/url_context), porque son herramientas más
-  caras. Armé una lógica de reintento sin esas herramientas cuando fallaba por cuota. Pero el error
+ Claude asumió que era la cuota de "búsqueda web" (google_search/url_context), porque son herramientas más
+  caras. Armó una lógica de reintento sin esas herramientas cuando fallaba por cuota. Pero el error
   persistía igual sin herramientas, así que fui a revisar el panel de uso real de Google AI Studio
   (aistudio.google.com/rate-limit) en vez de seguir adivinando — ahí vi que el límite real era otro:
   el modelo `gemini-3.6-flash` tiene apenas **20 solicitudes por día** en el nivel gratuito (lo gasté
@@ -81,17 +81,16 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
   probarlo — la propia API me devolvió el nombre del reemplazo (`gemini-3.6-flash`) en el mensaje de
   error, que fue el que después chocó con el límite de 20/día.
 - Nunca probé el modo "Foto" del menú (subir una imagen para que Gemini la lea) con un caso real —
-  quedó implementado pero sin validar.
-- No hay ningún control de que el copy generado realmente respete el máximo de 5 hashtags o el
-  formato exacto de "Ideal para" — depende de que el modelo siga bien la instrucción, no hay
-  validación de código que lo fuerce. Sería una mejora natural para la próxima vuelta.
+  quedó implementado pero sin validar por el problema del límite de cuota.
 - **Última prueba del día**: al volver a `gemini-3.6-flash` (el que sí leía bien los precios), Gemini
   devolvió el error *"This model is currently experiencing high demand"* — un problema de
-  disponibilidad del lado de Google, no de mi código ni de mi cuota. Entrego con este error sin
-  resolver: no depende de mí, y confirma otra cosa que aprendí hoy — cuando se depende de una API
-  externa gratuita, una parte de la confiabilidad del producto queda fuera de tu control.
-- Encontré (y evité subir a tiempo) un archivo con mi API key sueltro en la carpeta del proyecto —
-  quedó afuera del repo gracias a un `.gitignore`, pero es una prueba de lo fácil que es cometer ese
-  error si uno no está prestando atención.
+  disponibilidad del lado de Google, no de mi código ni de mi cuota.
 
 ## Qué aprendí
+
+- Aprendí a crear mi propio repo, clonarlo e interactuar con él desde Claude Code
+- Qué con una simple instrucción en lenguaje natural se pueden crear cosas muy útiles, la IA misma te va guiando si algo no entendes o te perdes.
+- Tuve que aprender lo que era una API KEY, para qué servía y evaluar que opciones había. Todavía me queda la duda de si la necesitaba si o si o había otro camino, cuando le pregunté a la IA me indicó que "Un chat como este está pensado para que una persona converse, no para que un programa externo dispare pedidos automáticos cada vez que alguien aprieta un botón en una web pública" Una API es, literalmente, la puerta de entrada para que un programa (tu HTML/JS) le hable a un modelo sin que haya una persona escribiendo en un chat. Es el mecanismo técnico que necesita cualquier automatización — no hay atajos
+- Cuando se depende de una API  externa gratuita, una parte de la confiabilidad del producto queda fuera de tu control, tuve errores de exceder el límite gratuito o de que estaba con mucho tráfico. 
+- Claude encontró y evitó un archivo con mi API key sueltro en la carpeta del proyecto y quedó afuera del repo gracias a un `.gitignore`, pero es una prueba de lo fácil que es cometer ese  error si uno no tiene el suficiente conocimiento
+- La supervisión humana y la re pregunta su algo no te cierra es clave. 
