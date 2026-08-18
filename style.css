@@ -180,6 +180,25 @@ textarea {
   font-size: 0.95rem;
 }
 
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 10px;
+  color: var(--accent-dark);
+  text-decoration: underline;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#fuentes {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f6f1ea;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
 #errorCard {
   border-color: #e0a89a;
   background: #fdf1ee;

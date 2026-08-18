@@ -90,12 +90,12 @@ ESTRUCTURA OBLIGATORIA (en este orden):
 3. Bloque de comida (si el speech/menú menciona platos): "Para comer fuimos con:" o "Nosotros probamos:" + lista de líneas "{emoji del plato} {plato} ({precio})". El emoji va antes de cada plato y tiene que ver con ESE plato puntual (ej: provoleta -> 🧀).
 4. Bloque de bebida (si aplica, puede ir separado o junto al anterior): "Para tomar:" + lista igual, emoji relacionado a cada trago.
 5. Postre (solo si el speech lo menciona): línea "Y de postre…" + ítem.
-6. "✍🏼 DATOS:" + 1 o 2 líneas con "✅" de información práctica NUEVA, que no haya aparecido antes en el copy. Reglas estrictas de esta sección:
-   - NUNCA repitas un precio, plato o trago que ya mencionaste en los bloques de comida/bebida.
-   - NUNCA repitas una idea ya dicha en el párrafo de apertura.
-   - Priorizá datos operativos que el lector necesita para ir: días y horario de apertura, si conviene reservar, si hay DJ/eventos y qué días, alguna política especial (ej: cubierto, edad mínima).
+6. "✍🏼 DATOS:" + 1 o 2 líneas con "✅" de información práctica NUEVA, que no haya aparecido antes en el copy. Reglas estrictas de esta sección (revisalas una por una antes de escribir cada línea, son las que más se te suelen escapar):
+   - PROHIBIDO usar el símbolo "$" o cualquier precio en esta sección, bajo cualquier forma ("desde $X", "tragos a partir de X"). Los precios van ÚNICAMENTE en los bloques de comida y bebida. Si el único dato que encontraste es un precio, descartalo.
+   - PROHIBIDO repetir, aunque sea con otras palabras, algo que ya dijiste en el párrafo de apertura o en las listas de comida/bebida (ej: si ya contaste que hay DJ y baile en la apertura, en DATOS no vuelvas a mencionar el DJ — buscá otro dato, como el horario, o directamente omitilo).
+   - Priorizá datos operativos que el lector necesita para ir y que sean REALMENTE nuevos: días y horario de apertura, si conviene reservar, qué día específico hay DJ/eventos (si no lo dijiste ya en la apertura), alguna política especial (cubierto, edad mínima).
    - Para conseguir estos datos, ADEMÁS de lo que te paso en el speech/menú, usá tu herramienta de búsqueda web para investigar el lugar (nombre + dirección + "instagram" u "horarios" son buenos términos). Si hay una cuenta de Instagram del lugar, intentá también leerla directamente.
-   - Solo incluí un dato si estás razonablemente segura/o de que es correcto y actual. Si no encontrás nada confiable (ni en lo que te pasé ni buscando), omitite esta sección entera antes que inventar o poner algo genérico.
+   - Solo incluí un dato si estás razonablemente segura/o de que es correcto y actual. Si no encontrás ningún dato nuevo confiable (ni en lo que te pasé ni buscando), omitite la sección "✍🏼 DATOS:" entera — no la completes con relleno ni con algo ya dicho.
 7. "☝🏼 Ideal para: " + la lista de valores que te paso (separados por coma).
 8. "📍 " + la dirección tal cual te la paso.
 9. Una pregunta de cierre para generar comentarios, con emoji 💬 o 📲, coherente con el lugar.
@@ -277,7 +277,30 @@ async function generarCopy(datos, apiKey) {
     throw new Error("Gemini respondió pero sin texto generado. Revisá la consola del navegador (F12) para más detalle.");
   }
 
-  return texto.trim();
+  const fuentes = extraerFuentes(data?.candidates?.[0]?.groundingMetadata);
+
+  return { texto: texto.trim(), fuentes };
+}
+
+function extraerFuentes(groundingMetadata) {
+  if (!groundingMetadata) return "El modelo no reporta haber buscado ni leído nada por fuera de lo que le pasaste.";
+
+  const lineas = [];
+
+  const queries = groundingMetadata.webSearchQueries || [];
+  if (queries.length) {
+    lineas.push(`Búsquedas web: ${queries.join(" | ")}`);
+  }
+
+  const chunks = groundingMetadata.groundingChunks || [];
+  const urls = chunks
+    .map((c) => c.web?.uri || c.retrievedUrl || c.maps?.uri)
+    .filter(Boolean);
+  if (urls.length) {
+    lineas.push("Fuentes leídas:\n" + urls.map((u) => `- ${u}`).join("\n"));
+  }
+
+  return lineas.length ? lineas.join("\n\n") : "El modelo tenía las herramientas activadas pero no reporta haberlas usado esta vez.";
 }
 
 // ---------- UI: submit ----------
@@ -290,6 +313,9 @@ const copiarBtn = document.getElementById("copiarBtn");
 const copiadoMsg = document.getElementById("copiadoMsg");
 const errorCard = document.getElementById("errorCard");
 const errorMsg = document.getElementById("errorMsg");
+const fuentesToggleWrap = document.getElementById("fuentesToggleWrap");
+const fuentesToggle = document.getElementById("fuentesToggle");
+const fuentesDiv = document.getElementById("fuentes");
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -311,12 +337,16 @@ form.addEventListener("submit", async (e) => {
   loading.classList.remove("hidden");
   resultado.value = "";
   copiadoMsg.classList.add("hidden");
+  fuentesToggleWrap.classList.add("hidden");
+  fuentesDiv.classList.add("hidden");
   generarBtn.disabled = true;
   generarBtn.textContent = "Generando...";
 
   try {
-    const copy = await generarCopy(datos, apiKey);
-    resultado.value = copy;
+    const { texto, fuentes } = await generarCopy(datos, apiKey);
+    resultado.value = texto;
+    fuentesDiv.textContent = fuentes;
+    fuentesToggleWrap.classList.remove("hidden");
   } catch (err) {
     mostrarError(`No se pudo generar el copy.\n\nDetalle: ${err.message}\n\nSi cargaste el menú como link y el error menciona la URL, probá con la pestaña "Foto" o "Texto" en su lugar.`);
     resultCard.classList.add("hidden");
@@ -325,6 +355,10 @@ form.addEventListener("submit", async (e) => {
     generarBtn.disabled = false;
     generarBtn.textContent = "✨ Generar copy";
   }
+});
+
+fuentesToggle.addEventListener("click", () => {
+  fuentesDiv.classList.toggle("hidden");
 });
 
 copiarBtn.addEventListener("click", async () => {
