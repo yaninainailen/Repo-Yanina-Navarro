@@ -90,7 +90,12 @@ ESTRUCTURA OBLIGATORIA (en este orden):
 3. Bloque de comida (si el speech/menú menciona platos): "Para comer fuimos con:" o "Nosotros probamos:" + lista de líneas "{emoji del plato} {plato} ({precio})". El emoji va antes de cada plato y tiene que ver con ESE plato puntual (ej: provoleta -> 🧀).
 4. Bloque de bebida (si aplica, puede ir separado o junto al anterior): "Para tomar:" + lista igual, emoji relacionado a cada trago.
 5. Postre (solo si el speech lo menciona): línea "Y de postre…" + ítem.
-6. "✍🏼 DATOS:" + 1 o 2 líneas con "✅" de información práctica destacable (precio desde, si hay que reservar, horarios, algo distintivo). Usá lo que haya en el speech; si no hay dato práctico claro, no inventes uno.
+6. "✍🏼 DATOS:" + 1 o 2 líneas con "✅" de información práctica NUEVA, que no haya aparecido antes en el copy. Reglas estrictas de esta sección:
+   - NUNCA repitas un precio, plato o trago que ya mencionaste en los bloques de comida/bebida.
+   - NUNCA repitas una idea ya dicha en el párrafo de apertura.
+   - Priorizá datos operativos que el lector necesita para ir: días y horario de apertura, si conviene reservar, si hay DJ/eventos y qué días, alguna política especial (ej: cubierto, edad mínima).
+   - Para conseguir estos datos, ADEMÁS de lo que te paso en el speech/menú, usá tu herramienta de búsqueda web para investigar el lugar (nombre + dirección + "instagram" u "horarios" son buenos términos). Si hay una cuenta de Instagram del lugar, intentá también leerla directamente.
+   - Solo incluí un dato si estás razonablemente segura/o de que es correcto y actual. Si no encontrás nada confiable (ni en lo que te pasé ni buscando), omitite esta sección entera antes que inventar o poner algo genérico.
 7. "☝🏼 Ideal para: " + la lista de valores que te paso (separados por coma).
 8. "📍 " + la dirección tal cual te la paso.
 9. Una pregunta de cierre para generar comentarios, con emoji 💬 o 📲, coherente con el lugar.
@@ -98,8 +103,8 @@ ESTRUCTURA OBLIGATORIA (en este orden):
 
 REGLAS DE ESTILO:
 - Tono informal, cercano, en "vos" (español rioplatense).
-- No inventes platos, precios ni datos que no estén en el speech, el menú o los datos cargados.
-- Si falta información para una sección opcional (postre, dato práctico), omitila en vez de inventar.
+- No inventes platos ni precios que no estén en el speech o el menú (link/foto/texto). Los precios SOLO pueden aparecer en los bloques de comida y bebida, nunca en DATOS.
+- Si falta información para una sección opcional (postre, DATOS), omitila en vez de inventar.
 - Devolvé SOLO el texto final del copy, listo para pegar en Instagram. Sin explicaciones, sin comillas, sin bloques de código.
 
 EJEMPLOS REALES DE @barescopados (para que copies el estilo, NO el contenido):
@@ -185,6 +190,11 @@ Speech del video (fuente principal de info y anécdotas):
 ${datos.speech}
 `.trim();
 
+  const igUrl = instagramUrlDesdeHandle(datos.instagramLugar);
+  if (igUrl) {
+    datosTexto += `\n\nPara la sección DATOS, investigá información complementaria (horarios, días de apertura, DJ/eventos) buscando en la web y, si podés leerlo, en ${igUrl}. Solo usalo si estás segura/o de que el dato es correcto.`;
+  }
+
   const parts = [];
 
   if (datos.menuModo === "texto") {
@@ -210,6 +220,13 @@ ${datos.speech}
   return parts;
 }
 
+function instagramUrlDesdeHandle(handle) {
+  if (!handle) return null;
+  const limpio = handle.replace("@", "").trim();
+  if (!limpio) return null;
+  return `https://www.instagram.com/${limpio}/`;
+}
+
 // ---------- Llamada a Gemini ----------
 async function generarCopy(datos, apiKey) {
   const userParts = await construirContenidoUsuario(datos);
@@ -229,11 +246,18 @@ async function generarCopy(datos, apiKey) {
     },
   };
 
-  // Solo agregamos la herramienta de lectura de URL cuando el menú viene por link,
-  // porque el navegador no puede leer sitios externos directamente (CORS).
-  if (datos.menuModo === "link" && datos.menuLink) {
-    body.tools = [{ url_context: {} }];
-  }
+  // google_search: para que investigue datos extra del lugar (horarios, DJ, etc.)
+  //   por fuera de lo que cargamos en el formulario.
+  // url_context: para leer directamente el link del menú y/o el Instagram del lugar
+  //   (el navegador no puede leer sitios externos por CORS, así que se lo delegamos
+  //   a Gemini). Instagram en particular puede bloquear esta lectura -- si eso pasa,
+  //   el modelo simplemente no va a tener ese dato y lo va a omitir.
+  const necesitaUrlContext =
+    (datos.menuModo === "link" && datos.menuLink) || instagramUrlDesdeHandle(datos.instagramLugar);
+
+  body.tools = necesitaUrlContext
+    ? [{ url_context: {} }, { google_search: {} }]
+    : [{ google_search: {} }];
 
   const res = await fetch(`${API_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
