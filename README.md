@@ -4,9 +4,9 @@
 Una página web (HTML + CSS + JS, sin backend) que genera el copy de Instagram para los posteos de
 @barescopados. Reemplaza la tarea manual de escribir el texto de cada publicación: cargo el nombre
 del lugar, el speech que grabé en el video, el menú y algunos datos, y un agente de IA (Gemini)
-redacta el copy siguiendo siempre la misma estructura y estilo que ya usamos en la cuenta. Es de uso
-compartido: la usamos tanto Lucho como yo, cada uno con su propia clave gratuita de Gemini, desde el
-celular.
+redacta el copy siguiendo siempre la misma estructura y estilo que ya usamos en la cuenta, incluso
+buscando en la web datos prácticos (horarios, DJ) que no le pasé a mano. Es de uso compartido: la
+usamos tanto Lucho como yo, cada uno con su propia clave gratuita de Gemini, desde el celular.
 
 ## Cómo se lo pedí
 Instrucciones principales, en el orden en que se las di al agente (Claude Code):
@@ -24,37 +24,63 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
    estructura exacta (título con emoji + nombre en mayúscula/negrita, bloque de comida, bloque de
    bebida, "✍🏼 DATOS", "☝🏼 Ideal para", dirección, pregunta de cierre, hashtags).
 5. Le expliqué el proceso manual real: primero grabo el video y el speech (guion hablado), después
-   armo el copy en base a eso; los datos de entrada son nombre del lugar, el speech, y el menú (link
-   o foto); la dirección y el usuario de Instagram del lugar los busco yo aparte.
+   armo el copy en base a eso; los datos de entrada son nombre del lugar, el speech, y el menú (link,
+   foto o texto); la dirección y el usuario de Instagram del lugar los busco yo aparte.
 6. Definí las reglas fijas: título siempre con emoji temático relacionado al lugar, un emoji distinto
    antes de cada plato/trago relacionado a esa comida puntual, máximo 5 hashtags (siempre
    #BaresCopados), "Ideal para" limitado a 4 valores posibles (citas, amigos, cumpleaños, after
-   office), y que los emojis los sugiera la IA en vez de tener que elegirlos yo cada vez.
+   office), y que los emojis los sugiera la IA en vez de tener que elegirlos yo cada vez. Para el
+   menú pedí poder cargarlo por link o por foto.
+7. Después de probarlo con un lugar real (Misión), pedí dos correcciones puntuales: que la sección
+   "DATOS" no repita precios ni ideas ya dichas antes en el copy, y que el agente pueda buscar por su
+   cuenta información extra del lugar (horarios, DJs) más allá de lo que yo le paso, tal como yo lo
+   busco a mano hoy.
 
 ## Qué funciona
 - Formulario responsive (mobile-first) con: nombre del bar, Instagram del lugar, dirección, speech,
   tres formas de cargar el menú (link, foto o texto pegado), checkboxes de "Ideal para", campo de
   API key (se guarda solo en el navegador, vía `localStorage`, nunca se sube al repo).
 - Botón "Generar copy" que arma un prompt con la estructura y los 3 ejemplos reales, y llama a la
-  API de Gemini (`gemini-2.0-flash`) directamente desde el navegador.
+  API de Gemini directamente desde el navegador.
+- **Modo Link probado con un caso real** (@mision.ba): el agente leyó el menú desde la web del lugar
+  (herramienta `url_context` de Gemini) y armó un copy respetando la estructura, con emojis
+  coherentes por plato y por temática del lugar.
+- Búsqueda web (`google_search`) activada para que la sección DATOS incluya información que no le
+  pasé a mano (horarios, eventos), con instrucción explícita de no inventar si no encuentra nada
+  confiable.
 - Botón "Copiar" para pasar el resultado directo a Instagram.
-- Manejo de errores visible en pantalla (si falla la clave, la conexión, o la lectura del menú).
-
-*(Sección a completar después de probarlo con una clave real de Gemini — ver "Qué falta o qué
-falló")*
+- Panel "Ver qué buscó/leyó el agente": muestra qué búsquedas hizo y qué fuentes leyó, para poder
+  auditar si la IA realmente investigó o se quedó con lo que le pasé.
+- Manejo de errores visible en pantalla, con degradación automática: si se queda sin cuota para
+  buscar/leer, reintenta sin esas herramientas en vez de romperse.
 
 ## Qué falta o qué falló
-- **Pendiente de prueba real**: el código está escrito pero todavía no lo probamos con una clave de
-  Gemini de verdad. Falta confirmar que la llamada a la API funciona y que el copy generado respeta
-  el formato.
-- **Riesgo conocido en el modo "Link"**: la página no tiene servidor propio, así que no puede leer
-  directamente el HTML de un sitio externo (restricción de CORS del navegador). Para sortear esto, el
-  modo "Link" le pide a Gemini que use su propia herramienta de lectura de URL (`url_context`). No
-  tengo 100% de certeza de que esa herramienta esté disponible en el nivel gratuito para todos los
-  sitios — por eso el formulario también tiene modo "Foto" y "Texto" como alternativa garantizada.
-- Falta decidir qué pasa si Gemini no encuentra info suficiente en el speech para alguna sección
-  opcional (ej: postre, dato práctico) — por ahora la instrucción es que la omita en vez de inventar,
-  pero falta verificarlo en la práctica.
+- **La sección DATOS repetía precios y contenido**: en la primera prueba real, "DATOS" volvía a poner
+  un precio de los tragos y repetía la idea del DJ que ya estaba en la apertura. Ajusté el prompt con
+  reglas explícitas ("prohibido el símbolo $ en DATOS", "prohibido repetir ideas ya dichas") y un
+  criterio claro de cuándo omitir la sección en vez de rellenarla. Quedó mejor pero no llegué a hacer
+  una tercera prueba end-to-end por el problema de cuota (ver siguiente punto) — para la próxima
+  entrega habría que confirmar que la corrección sostiene en varios casos distintos, no solo uno.
+- **Choqué con el límite de cuota gratuita de Gemini, y la causa no era la que pensé**: al principio
+  asumí que era la cuota de "búsqueda web" (google_search/url_context), porque son herramientas más
+  caras. Armé una lógica de reintento sin esas herramientas cuando fallaba por cuota. Pero el error
+  persistía igual sin herramientas, así que fui a revisar el panel de uso real de Google AI Studio
+  (aistudio.google.com/rate-limit) en vez de seguir adivinando — ahí vi que el límite real era otro:
+  el modelo `gemini-3.6-flash` tiene apenas **20 solicitudes por día** en el nivel gratuito (lo gasté
+  entero probando), mientras que la búsqueda web tiene 2.000/día y no era el problema. Cambié el
+  modelo a `gemini-3.5-flash-lite`, que tiene 500 solicitudes/día gratis, pero **no llegué a probarlo
+  end-to-end con clave real por falta de tiempo antes de la entrega** — es lo primero a validar en la
+  próxima iteración.
+- El modelo `gemini-2.0-flash` (mi elección inicial) ya estaba discontinuado y ni siquiera llegué a
+  probarlo — la propia API me devolvió el nombre del reemplazo (`gemini-3.6-flash`) en el mensaje de
+  error, que fue el que después chocó con el límite de 20/día.
+- Nunca probé el modo "Foto" del menú (subir una imagen para que Gemini la lea) con un caso real —
+  quedó implementado pero sin validar.
+- No hay ningún control de que el copy generado realmente respete el máximo de 5 hashtags o el
+  formato exacto de "Ideal para" — depende de que el modelo siga bien la instrucción, no hay
+  validación de código que lo fuerce. Sería una mejora natural para la próxima vuelta.
+- Encontré (y evité subir a tiempo) un archivo con mi API key sueltro en la carpeta del proyecto —
+  quedó afuera del repo gracias a un `.gitignore`, pero es una prueba de lo fácil que es cometer ese
+  error si uno no está prestando atención.
 
 ## Qué aprendí
-*(esta sección la completo yo con mi reflexión real después de probarlo)*

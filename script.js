@@ -1,5 +1,5 @@
 // ---------- Config ----------
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-3.5-flash-lite"; // gemini-3.6-flash tenía solo 20 solicitudes/día gratis; esta variante "lite" tiene 500/día
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const STORAGE_KEY = "barescopados_gemini_key";
 
