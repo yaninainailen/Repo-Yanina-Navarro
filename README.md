@@ -1,5 +1,12 @@
 # Generador de copies para @barescopados
 
+**Página funcionando:** https://yaninainailen.github.io/Repo-Yanina-Navarro/
+**Código fuente:** los archivos `index.html`, `style.css` y `script.js` en la raíz de este repo.
+
+⚠️ Para probar el botón "Generar copy" hace falta pegar una **clave gratuita propia de Gemini**
+(no la mía) — se consigue en 1 minuto en [aistudio.google.com](https://aistudio.google.com), sin
+tarjeta. Sin clave, el formulario carga y se ve bien, pero el botón va a mostrar un error pidiéndola.
+
 ## Qué construí
 Una página web (HTML + CSS + JS, sin backend) que genera el copy de Instagram para los posteos de
 @barescopados. Reemplaza la tarea manual de escribir el texto de cada publicación: cargo el nombre
