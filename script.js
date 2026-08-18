@@ -259,7 +259,15 @@ async function llamarGemini(userParts, tools, apiKey) {
   const data = await res.json();
 
   if (!res.ok) {
-    const msg = data?.error?.message || `Error HTTP ${res.status}`;
+    let msg = data?.error?.message || `Error HTTP ${res.status}`;
+    // Si Google nos manda el detalle de qué cuota puntual se agotó (por día,
+    // por minuto, de qué feature), lo mostramos: así diagnosticamos con datos
+    // reales en vez de adivinar.
+    const violaciones = data?.error?.details
+      ?.find((d) => d["@type"]?.includes("QuotaFailure"))
+      ?.violations?.map((v) => v.quotaId || v.quotaMetric)
+      .filter(Boolean);
+    if (violaciones?.length) msg += `\n(Cuota específica agotada: ${violaciones.join(", ")})`;
     throw new Error(msg);
   }
 
@@ -278,38 +286,30 @@ async function llamarGemini(userParts, tools, apiKey) {
 //   a Gemini). Instagram en particular puede bloquear esta lectura -- si eso pasa,
 //   el modelo simplemente no va a tener ese dato y lo va a omitir.
 //
-// La cuota gratuita para "buscar/leer" (grounding) es más chica que la de generar
-// texto normal. Si se agota, degradamos automáticamente en vez de romper: primero
-// probamos sin búsqueda web, después sin nada de eso -- así siempre se llega a un
-// copy, aunque sea sin los datos extra investigados.
+// Si la cuota gratuita de "buscar/leer" (grounding) está agotada, reintentamos
+// UNA sola vez sin esas herramientas (no más, para no derrochar la cuota general
+// del modelo si el problema es otro). Si ese segundo intento también falla por
+// cuota, es que el límite es del modelo entero, no de la búsqueda -- y ahí no
+// tiene sentido seguir reintentando.
 async function generarCopy(datos, apiKey) {
   const userParts = await construirContenidoUsuario(datos);
 
   const necesitaUrlContext =
     (datos.menuModo === "link" && datos.menuLink) || instagramUrlDesdeHandle(datos.instagramLugar);
 
-  const intentos = [
-    necesitaUrlContext ? [{ url_context: {} }, { google_search: {} }] : [{ google_search: {} }],
-    necesitaUrlContext ? [{ url_context: {} }] : [],
-    [],
-  ];
+  const toolsConTodo = necesitaUrlContext
+    ? [{ url_context: {} }, { google_search: {} }]
+    : [{ google_search: {} }];
 
-  let degradado = null;
+  try {
+    const { texto, groundingMetadata } = await llamarGemini(userParts, toolsConTodo, apiKey);
+    return { texto, fuentes: extraerFuentes(groundingMetadata) };
+  } catch (err) {
+    if (!esErrorDeCuota(err)) throw err;
 
-  for (let i = 0; i < intentos.length; i++) {
-    try {
-      const { texto, groundingMetadata } = await llamarGemini(userParts, intentos[i], apiKey);
-      const fuentes = degradado
-        ? `${degradado}\n\n${extraerFuentes(groundingMetadata)}`
-        : extraerFuentes(groundingMetadata);
-      return { texto, fuentes };
-    } catch (err) {
-      const esUltimoIntento = i === intentos.length - 1;
-      if (!esErrorDeCuota(err) || esUltimoIntento) throw err;
-      degradado = `⚠️ Se quedó sin cuota gratuita para "${
-        i === 0 ? "buscar en la web / leer el link" : "leer el link"
-      }" y generó este copy sin esa parte. Probá de nuevo en unos minutos si querés que lo reintente con esa herramienta.`;
-    }
+    const { texto, groundingMetadata } = await llamarGemini(userParts, [], apiKey);
+    const fuentes = `⚠️ Se quedó sin cuota gratuita para buscar/leer en la web y generó este copy sin esa parte.\n\n${extraerFuentes(groundingMetadata)}`;
+    return { texto, fuentes };
   }
 }
 
