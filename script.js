@@ -228,9 +228,11 @@ function instagramUrlDesdeHandle(handle) {
 }
 
 // ---------- Llamada a Gemini ----------
-async function generarCopy(datos, apiKey) {
-  const userParts = await construirContenidoUsuario(datos);
+function esErrorDeCuota(err) {
+  return /quota|rate.?limit|429|RESOURCE_EXHAUSTED/i.test(err.message);
+}
 
+async function llamarGemini(userParts, tools, apiKey) {
   const body = {
     system_instruction: {
       parts: [{ text: INSTRUCCIONES }],
@@ -246,18 +248,7 @@ async function generarCopy(datos, apiKey) {
     },
   };
 
-  // google_search: para que investigue datos extra del lugar (horarios, DJ, etc.)
-  //   por fuera de lo que cargamos en el formulario.
-  // url_context: para leer directamente el link del menú y/o el Instagram del lugar
-  //   (el navegador no puede leer sitios externos por CORS, así que se lo delegamos
-  //   a Gemini). Instagram en particular puede bloquear esta lectura -- si eso pasa,
-  //   el modelo simplemente no va a tener ese dato y lo va a omitir.
-  const necesitaUrlContext =
-    (datos.menuModo === "link" && datos.menuLink) || instagramUrlDesdeHandle(datos.instagramLugar);
-
-  body.tools = necesitaUrlContext
-    ? [{ url_context: {} }, { google_search: {} }]
-    : [{ google_search: {} }];
+  if (tools.length) body.tools = tools;
 
   const res = await fetch(`${API_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
@@ -277,9 +268,49 @@ async function generarCopy(datos, apiKey) {
     throw new Error("Gemini respondió pero sin texto generado. Revisá la consola del navegador (F12) para más detalle.");
   }
 
-  const fuentes = extraerFuentes(data?.candidates?.[0]?.groundingMetadata);
+  return { texto: texto.trim(), groundingMetadata: data?.candidates?.[0]?.groundingMetadata };
+}
 
-  return { texto: texto.trim(), fuentes };
+// google_search: para que investigue datos extra del lugar (horarios, DJ, etc.)
+//   por fuera de lo que cargamos en el formulario.
+// url_context: para leer directamente el link del menú y/o el Instagram del lugar
+//   (el navegador no puede leer sitios externos por CORS, así que se lo delegamos
+//   a Gemini). Instagram en particular puede bloquear esta lectura -- si eso pasa,
+//   el modelo simplemente no va a tener ese dato y lo va a omitir.
+//
+// La cuota gratuita para "buscar/leer" (grounding) es más chica que la de generar
+// texto normal. Si se agota, degradamos automáticamente en vez de romper: primero
+// probamos sin búsqueda web, después sin nada de eso -- así siempre se llega a un
+// copy, aunque sea sin los datos extra investigados.
+async function generarCopy(datos, apiKey) {
+  const userParts = await construirContenidoUsuario(datos);
+
+  const necesitaUrlContext =
+    (datos.menuModo === "link" && datos.menuLink) || instagramUrlDesdeHandle(datos.instagramLugar);
+
+  const intentos = [
+    necesitaUrlContext ? [{ url_context: {} }, { google_search: {} }] : [{ google_search: {} }],
+    necesitaUrlContext ? [{ url_context: {} }] : [],
+    [],
+  ];
+
+  let degradado = null;
+
+  for (let i = 0; i < intentos.length; i++) {
+    try {
+      const { texto, groundingMetadata } = await llamarGemini(userParts, intentos[i], apiKey);
+      const fuentes = degradado
+        ? `${degradado}\n\n${extraerFuentes(groundingMetadata)}`
+        : extraerFuentes(groundingMetadata);
+      return { texto, fuentes };
+    } catch (err) {
+      const esUltimoIntento = i === intentos.length - 1;
+      if (!esErrorDeCuota(err) || esUltimoIntento) throw err;
+      degradado = `⚠️ Se quedó sin cuota gratuita para "${
+        i === 0 ? "buscar en la web / leer el link" : "leer el link"
+      }" y generó este copy sin esa parte. Probá de nuevo en unos minutos si querés que lo reintente con esa herramienta.`;
+    }
+  }
 }
 
 function extraerFuentes(groundingMetadata) {
