@@ -85,6 +85,11 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
 - No hay ningún control de que el copy generado realmente respete el máximo de 5 hashtags o el
   formato exacto de "Ideal para" — depende de que el modelo siga bien la instrucción, no hay
   validación de código que lo fuerce. Sería una mejora natural para la próxima vuelta.
+- **Última prueba del día**: al volver a `gemini-3.6-flash` (el que sí leía bien los precios), Gemini
+  devolvió el error *"This model is currently experiencing high demand"* — un problema de
+  disponibilidad del lado de Google, no de mi código ni de mi cuota. Entrego con este error sin
+  resolver: no depende de mí, y confirma otra cosa que aprendí hoy — cuando se depende de una API
+  externa gratuita, una parte de la confiabilidad del producto queda fuera de tu control.
 - Encontré (y evité subir a tiempo) un archivo con mi API key sueltro en la carpeta del proyecto —
   quedó afuera del repo gracias a un `.gitignore`, pero es una prueba de lo fácil que es cometer ese
   error si uno no está prestando atención.
