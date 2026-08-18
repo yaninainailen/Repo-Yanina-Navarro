@@ -67,10 +67,16 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
   persistía igual sin herramientas, así que fui a revisar el panel de uso real de Google AI Studio
   (aistudio.google.com/rate-limit) en vez de seguir adivinando — ahí vi que el límite real era otro:
   el modelo `gemini-3.6-flash` tiene apenas **20 solicitudes por día** en el nivel gratuito (lo gasté
-  entero probando), mientras que la búsqueda web tiene 2.000/día y no era el problema. Cambié el
-  modelo a `gemini-3.5-flash-lite`, que tiene 500 solicitudes/día gratis, pero **no llegué a probarlo
-  end-to-end con clave real por falta de tiempo antes de la entrega** — es lo primero a validar en la
-  próxima iteración.
+  entero probando), mientras que la búsqueda web tiene 2.000/día y no era el problema.
+- **Probé cambiar a un modelo "lite" con más cuota, y empeoró la calidad**: cambié a
+  `gemini-3.5-flash-lite` (500 solicitudes/día en vez de 20) para no volver a quedarme sin cuota. Al
+  probarlo con el mismo lugar real, los precios del menú salieron **inventados** — el modelo más
+  chico no leyó bien el link del menú (o lo ignoró) y completó con precios inventados en vez de los
+  reales. Volví a `gemini-3.6-flash`: para este uso (unos pocos copies por semana, no cientos por
+  día) 20 solicitudes diarias alcanzan de sobra, y la precisión de los precios importa mucho más que
+  el volumen de cuota — un precio mal publicado es un error real frente a los seguidores.
+  **Aprendizaje concreto**: "más cuota gratis" y "mismo modelo" no son intercambiables; hay que
+  probar con un caso real antes de asumir que un modelo más chico sirve igual.
 - El modelo `gemini-2.0-flash` (mi elección inicial) ya estaba discontinuado y ni siquiera llegué a
   probarlo — la propia API me devolvió el nombre del reemplazo (`gemini-3.6-flash`) en el mensaje de
   error, que fue el que después chocó con el límite de 20/día.
