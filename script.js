@@ -232,6 +232,13 @@ function esErrorDeCuota(err) {
   return /quota|rate.?limit|429|RESOURCE_EXHAUSTED/i.test(err.message);
 }
 
+// MALFORMED_FUNCTION_CALL: falla intermitente y conocida de Gemini cuando intenta armar una
+// llamada a una herramienta (url_context / google_search) y le sale mal. No depende de nuestros
+// datos -- la solución que funciona es reintentar sin esas herramientas.
+function esErrorDeToolCall(err) {
+  return /MALFORMED_FUNCTION_CALL/i.test(err.message);
+}
+
 // Cuando Gemini devuelve una respuesta "vacía" (sin texto), casi siempre es por un motivo
 // puntual (filtro de seguridad, se cortó por longitud, etc.) que viene en la propia respuesta.
 // Lo mostramos directo en pantalla en vez de mandar a "revisar la consola" -- que ni existe
@@ -242,6 +249,7 @@ const MOTIVOS_FINISH_REASON = {
   MAX_TOKENS: "La respuesta se cortó por longitud antes de generar texto. Probá con un speech o menú más corto.",
   OTHER: "Gemini no pudo completar la respuesta por un motivo no especificado.",
   PROHIBITED_CONTENT: "El contenido fue bloqueado por las políticas de Gemini.",
+  MALFORMED_FUNCTION_CALL: "Gemini intentó usar una herramienta (buscar en la web / leer un link) y falló al armarla, incluso reintentando sin ella. Probá cambiar el menú a modo Foto o Texto, o sacar el Instagram del lugar.",
 };
 
 function explicarRespuestaVacia(data) {
@@ -331,10 +339,15 @@ async function generarCopy(datos, apiKey) {
     const { texto, groundingMetadata } = await llamarGemini(userParts, toolsConTodo, apiKey);
     return { texto, fuentes: extraerFuentes(groundingMetadata) };
   } catch (err) {
-    if (!esErrorDeCuota(err)) throw err;
+    const porCuota = esErrorDeCuota(err);
+    const porToolCall = esErrorDeToolCall(err);
+    if (!porCuota && !porToolCall) throw err;
 
     const { texto, groundingMetadata } = await llamarGemini(userParts, [], apiKey);
-    const fuentes = `⚠️ Se quedó sin cuota gratuita para buscar/leer en la web y generó este copy sin esa parte.\n\n${extraerFuentes(groundingMetadata)}`;
+    const motivo = porCuota
+      ? "se quedó sin cuota gratuita para buscar/leer en la web"
+      : "Gemini falló al intentar usar la herramienta de búsqueda/lectura (error intermitente conocido)";
+    const fuentes = `⚠️ Se generó este copy sin buscar/leer en la web porque ${motivo}.\n\n${extraerFuentes(groundingMetadata)}`;
     return { texto, fuentes };
   }
 }
