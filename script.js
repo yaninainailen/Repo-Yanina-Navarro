@@ -232,6 +232,32 @@ function esErrorDeCuota(err) {
   return /quota|rate.?limit|429|RESOURCE_EXHAUSTED/i.test(err.message);
 }
 
+// Cuando Gemini devuelve una respuesta "vacía" (sin texto), casi siempre es por un motivo
+// puntual (filtro de seguridad, se cortó por longitud, etc.) que viene en la propia respuesta.
+// Lo mostramos directo en pantalla en vez de mandar a "revisar la consola" -- que ni existe
+// en el navegador del celular.
+const MOTIVOS_FINISH_REASON = {
+  SAFETY: "El contenido fue bloqueado por los filtros de seguridad de Gemini (puede pasar con ciertas combinaciones de palabras en el speech o el nombre del lugar). Probá reformular el speech.",
+  RECITATION: "Gemini detectó que la respuesta se parecía demasiado a un texto existente y la bloqueó. Probá reformular el speech con tus palabras.",
+  MAX_TOKENS: "La respuesta se cortó por longitud antes de generar texto. Probá con un speech o menú más corto.",
+  OTHER: "Gemini no pudo completar la respuesta por un motivo no especificado.",
+  PROHIBITED_CONTENT: "El contenido fue bloqueado por las políticas de Gemini.",
+};
+
+function explicarRespuestaVacia(data) {
+  const bloqueoPrompt = data?.promptFeedback?.blockReason;
+  if (bloqueoPrompt) {
+    return `El pedido en sí fue bloqueado por Gemini (motivo: ${bloqueoPrompt}). Probá reformular el speech o los datos del lugar.`;
+  }
+
+  const finishReason = data?.candidates?.[0]?.finishReason;
+  if (finishReason && finishReason !== "STOP") {
+    return MOTIVOS_FINISH_REASON[finishReason] || `Motivo reportado por Gemini: ${finishReason}.`;
+  }
+
+  return "No se pudo determinar el motivo exacto. Probá de nuevo -- si se repite con los mismos datos, puede ser un problema temporal de Gemini.";
+}
+
 async function llamarGemini(userParts, tools, apiKey) {
   const body = {
     system_instruction: {
@@ -273,7 +299,7 @@ async function llamarGemini(userParts, tools, apiKey) {
 
   const texto = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") || "";
   if (!texto) {
-    throw new Error("Gemini respondió pero sin texto generado. Revisá la consola del navegador (F12) para más detalle.");
+    throw new Error(`Gemini respondió pero sin texto generado. ${explicarRespuestaVacia(data)}`);
   }
 
   return { texto: texto.trim(), groundingMetadata: data?.candidates?.[0]?.groundingMetadata };
