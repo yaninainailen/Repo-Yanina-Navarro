@@ -4,8 +4,7 @@
 **Código fuente:** los archivos `index.html`, `style.css` y `script.js` en la raíz de este repo.
 
 ⚠️ Para probar el botón "Generar copy" hace falta pegar una **clave gratuita propia de Gemini**
-(no la mía) — se consigue en 1 minuto en [aistudio.google.com](https://aistudio.google.com), sin
-tarjeta. Sin clave, el formulario carga y se ve bien, pero el botón va a mostrar un error pidiéndola.
+(no la mía) — se consigue en 1 minuto en [aistudio.google.com](https://aistudio.google.com)
 
 ## Qué construí
 Una página web (HTML + CSS + JS, sin backend) que genera el copy de Instagram para los posteos de
@@ -97,7 +96,7 @@ Instrucciones principales, en el orden en que se las di al agente (Claude Code):
 
 - Aprendí a crear mi propio repo, clonarlo e interactuar con él desde Claude Code
 - Qué con una simple instrucción en lenguaje natural se pueden crear cosas muy útiles, la IA misma te va guiando si algo no entendes o te perdes.
-- Tuve que aprender lo que era una API KEY, para qué servía y evaluar que opciones había. Todavía me queda la duda de si la necesitaba si o si o había otro camino, cuando le pregunté a la IA me indicó que "Un chat como este está pensado para que una persona converse, no para que un programa externo dispare pedidos automáticos cada vez que alguien aprieta un botón en una web pública" Una API es, literalmente, la puerta de entrada para que un programa (tu HTML/JS) le hable a un modelo sin que haya una persona escribiendo en un chat. Es el mecanismo técnico que necesita cualquier automatización — no hay atajos
+- Tuve que aprender lo que era una API KEY, para qué servía y evaluar que opciones había. Todavía me queda la duda de si la necesitaba si o si o había otro camino, cuando le pregunté a la IA me indicó que "Un chat como este está pensado para que una persona converse, no para que un programa externo dispare pedidos automáticos cada vez que alguien aprieta un botón en una web pública" Una API es, literalmente, la puerta de entrada para que un programa (tu HTML/JS) le hable a un modelo sin que haya una persona escribiendo en un chat. Es el mecanismo técnico que necesita cualquier automatización, no hay atajos"
 - Cuando se depende de una API  externa gratuita, una parte de la confiabilidad del producto queda fuera de tu control, tuve errores de exceder el límite gratuito o de que estaba con mucho tráfico. 
 - Claude encontró y evitó un archivo con mi API key sueltro en la carpeta del proyecto y quedó afuera del repo gracias a un `.gitignore`, pero es una prueba de lo fácil que es cometer ese  error si uno no tiene el suficiente conocimiento
 - La supervisión humana y la re pregunta su algo no te cierra es clave. 
