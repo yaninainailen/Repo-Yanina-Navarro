@@ -94,8 +94,8 @@ ESTRUCTURA OBLIGATORIA (en este orden):
    - PROHIBIDO usar el símbolo "$" o cualquier precio en esta sección, bajo cualquier forma ("desde $X", "tragos a partir de X"). Los precios van ÚNICAMENTE en los bloques de comida y bebida. Si el único dato que encontraste es un precio, descartalo.
    - PROHIBIDO repetir, aunque sea con otras palabras, algo que ya dijiste en el párrafo de apertura o en las listas de comida/bebida (ej: si ya contaste que hay DJ y baile en la apertura, en DATOS no vuelvas a mencionar el DJ — buscá otro dato, como el horario, o directamente omitilo).
    - Priorizá datos operativos que el lector necesita para ir y que sean REALMENTE nuevos: días y horario de apertura, si conviene reservar, qué día específico hay DJ/eventos (si no lo dijiste ya en la apertura), alguna política especial (cubierto, edad mínima).
-   - Para conseguir estos datos, ADEMÁS de lo que te paso en el speech/menú, usá tu herramienta de búsqueda web para investigar el lugar (nombre + dirección + "instagram" u "horarios" son buenos términos). Si hay una cuenta de Instagram del lugar, intentá también leerla directamente.
-   - Solo incluí un dato si estás razonablemente segura/o de que es correcto y actual. Si no encontrás ningún dato nuevo confiable (ni en lo que te pasé ni buscando), omitite la sección "✍🏼 DATOS:" entera — no la completes con relleno ni con algo ya dicho.
+   - Usá ÚNICAMENTE lo que te paso en el speech y el menú. No busques ni investigues nada por fuera de eso.
+   - Solo incluí un dato si aparece explícitamente en lo que te pasé. Si no hay ningún dato nuevo ahí, omitite la sección "✍🏼 DATOS:" entera — no la completes con relleno, con algo ya dicho, ni con nada inventado o buscado.
 7. "☝🏼 Ideal para: " + la lista de valores que te paso (separados por coma).
 8. "📍 " + la dirección tal cual te la paso.
 9. Una pregunta de cierre para generar comentarios, con emoji 💬 o 📲, coherente con el lugar.
@@ -190,11 +190,6 @@ Speech del video (fuente principal de info y anécdotas):
 ${datos.speech}
 `.trim();
 
-  const igUrl = instagramUrlDesdeHandle(datos.instagramLugar);
-  if (igUrl) {
-    datosTexto += `\n\nPara la sección DATOS, investigá información complementaria (horarios, días de apertura, DJ/eventos) buscando en la web y, si podés leerlo, en ${igUrl}. Solo usalo si estás segura/o de que el dato es correcto.`;
-  }
-
   const parts = [];
 
   if (datos.menuModo === "texto") {
@@ -220,21 +215,14 @@ ${datos.speech}
   return parts;
 }
 
-function instagramUrlDesdeHandle(handle) {
-  if (!handle) return null;
-  const limpio = handle.replace("@", "").trim();
-  if (!limpio) return null;
-  return `https://www.instagram.com/${limpio}/`;
-}
-
 // ---------- Llamada a Gemini ----------
 function esErrorDeCuota(err) {
   return /quota|rate.?limit|429|RESOURCE_EXHAUSTED/i.test(err.message);
 }
 
 // MALFORMED_FUNCTION_CALL: falla intermitente y conocida de Gemini cuando intenta armar una
-// llamada a una herramienta (url_context / google_search) y le sale mal. No depende de nuestros
-// datos -- la solución que funciona es reintentar sin esas herramientas.
+// llamada a la herramienta url_context (lectura del link del menú) y le sale mal. No depende de
+// nuestros datos -- la solución que funciona es reintentar sin la herramienta.
 function esErrorDeToolCall(err) {
   return /MALFORMED_FUNCTION_CALL/i.test(err.message);
 }
@@ -313,41 +301,34 @@ async function llamarGemini(userParts, tools, apiKey) {
   return { texto: texto.trim(), groundingMetadata: data?.candidates?.[0]?.groundingMetadata };
 }
 
-// google_search: para que investigue datos extra del lugar (horarios, DJ, etc.)
-//   por fuera de lo que cargamos en el formulario.
-// url_context: para leer directamente el link del menú y/o el Instagram del lugar
-//   (el navegador no puede leer sitios externos por CORS, así que se lo delegamos
-//   a Gemini). Instagram en particular puede bloquear esta lectura -- si eso pasa,
-//   el modelo simplemente no va a tener ese dato y lo va a omitir.
+// url_context: SOLO para leer el link del menú cuando el modo es "Link" (el navegador no puede
+//   leer sitios externos por CORS, así que se lo delegamos a Gemini). No se usa para investigar
+//   nada más -- el agente trabaja únicamente con lo que se le pasa en el formulario.
 //
-// Si la cuota gratuita de "buscar/leer" (grounding) está agotada, reintentamos
-// UNA sola vez sin esas herramientas (no más, para no derrochar la cuota general
-// del modelo si el problema es otro). Si ese segundo intento también falla por
-// cuota, es que el límite es del modelo entero, no de la búsqueda -- y ahí no
-// tiene sentido seguir reintentando.
+// Si esa lectura falla por cuota agotada o por el error intermitente de Gemini armando la
+// llamada a la herramienta, reintentamos UNA sola vez sin ella en vez de romper -- el copy sale
+// igual, solo que sin haber podido leer el link (ver aviso en el panel de fuentes).
 async function generarCopy(datos, apiKey) {
   const userParts = await construirContenidoUsuario(datos);
 
-  const necesitaUrlContext =
-    (datos.menuModo === "link" && datos.menuLink) || instagramUrlDesdeHandle(datos.instagramLugar);
-
-  const toolsConTodo = necesitaUrlContext
-    ? [{ url_context: {} }, { google_search: {} }]
-    : [{ google_search: {} }];
+  const usaMenuLink = datos.menuModo === "link" && datos.menuLink;
+  const toolsConTodo = usaMenuLink ? [{ url_context: {} }] : [];
 
   try {
     const { texto, groundingMetadata } = await llamarGemini(userParts, toolsConTodo, apiKey);
     return { texto, fuentes: extraerFuentes(groundingMetadata) };
   } catch (err) {
+    if (!toolsConTodo.length) throw err;
+
     const porCuota = esErrorDeCuota(err);
     const porToolCall = esErrorDeToolCall(err);
     if (!porCuota && !porToolCall) throw err;
 
     const { texto, groundingMetadata } = await llamarGemini(userParts, [], apiKey);
     const motivo = porCuota
-      ? "se quedó sin cuota gratuita para buscar/leer en la web"
-      : "Gemini falló al intentar usar la herramienta de búsqueda/lectura (error intermitente conocido)";
-    const fuentes = `⚠️ Se generó este copy sin buscar/leer en la web porque ${motivo}.\n\n${extraerFuentes(groundingMetadata)}`;
+      ? "se quedó sin cuota gratuita para leer el link"
+      : "Gemini falló al intentar leer el link (error intermitente conocido)";
+    const fuentes = `⚠️ Se generó este copy sin leer el link del menú porque ${motivo}. Probá con modo Foto o Texto si el resultado no tiene los precios correctos.\n\n${extraerFuentes(groundingMetadata)}`;
     return { texto, fuentes };
   }
 }
